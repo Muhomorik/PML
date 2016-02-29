@@ -7,18 +7,172 @@ output:
     keep_md: yes
 ---
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+# Assignment: Prediction Assignment Writeup # 
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+## Background ##
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+## Task ##
+
+The goal of your project is to predict the manner in which they did the exercise. This is the "classe" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+
+## Data ##
+
+The training data for this project are available here:
+
+[https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv)
+
+The test data are available here:
+
+[https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv](https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv)
+
+The data for this project come from this source: [http://groupware.les.inf.puc-rio.br/har](http://groupware.les.inf.puc-rio.br/har). 
+If you use the document you create for this class for any purpose please cite them as they have been very generous in allowing their data to be used for this kind of assignment. 
+
+## Preparation ##
+
 
 ```{r}
-summary(cars)
+rm(list=ls())
+setwd("~/R Projects/Coursera/8 - Practical Machine Learning/PML")
+
+library(caret)
+
+library(rpart)
+library(rpart.plot)
+
+library(rattle)
+library(randomForest)
+library(corrplot)
+
+set.seed(12345) # like always...
+
 ```
 
-You can also embed plots, for example:
+## Download and clean the data ##
 
-```{r, echo=FALSE}
-plot(cars)
+Load the csv data. A quick look shows that both test and train data have NA values and
+the train data has additional "#DIV/0!" values that can be encoded as NA.
+
+```{r}
+testUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+trainUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+
+#test <- read.csv(url(testUrl), na.strings=c("NA","#DIV/0!",""))
+#train <- read.csv(url(trainUrl), na.strings=c("NA","#DIV/0!",""))
+
+# for test use.
+test <- read.csv("pml-testing.csv", na.strings=c("NA","#DIV/0!",""))
+train <- read.csv("pml-training.csv", na.strings=c("NA","#DIV/0!",""))
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Create partitions
+
+```{r}
+
+inTrain  <- createDataPartition(train$classe, p=0.7, list=FALSE)
+
+trainSet <- train[inTrain, ]
+testSet  <- train[-inTrain, ]
+
+```
+
+Both sets should now have 160 variables, but there is some data that needs to be removed.
+Like variables with near zero variance.
+
+
+```{r}
+
+NZVars <- nearZeroVar(trainSet)
+
+trainSet <- trainSet[, -NZVars]
+testSet  <- testSet[, -NZVars]
+
+```
+
+Some columns include mostly NA values, better to remove those or the predicion will fail with error.
+The nice solution is available here: [Remove columns from dataframe where ALL values are NA](http://stackoverflow.com/questions/2643939/remove-columns-from-dataframe-where-all-values-are-na)
+
+```{r}
+
+notna    <- sapply(trainSet, function(x) mean(is.na(x))) > 0.95
+trainSet <- trainSet[, !notna]
+testSet  <- testSet[, !notna]
+
+```
+
+At that moment, the test set should only include this reduced set of data:
+
+```{r}
+dim(testSet)
+```
+and the training set 
+```{r}
+dim(trainSet)
+```
+
+Feature plot of dataset (slow) [more examples](http://topepo.github.io/caret/visualizations.html)
+
+```{r featurePlot}
+featurePlot(x=trainSet, y = trainSet$classe, plot="pairs") #runs for 30 min
+```
+
+# Decision Tree ML #
+
+Make a Decision Tree ML and draw it using fancyplot.
+
+```{r}
+
+dt_pred <- rpart(classe~., data=trainSet, method="class")
+fancyRpartPlot(dt_pred)
+
+```
+
+Create a confusion matrix and print it.
+
+```{r}
+
+prediction_dt <- predict(dt_pred, newdata=testSet, type="class")
+matrix_dt <- confusionMatrix(prediction_dt, testSet$classe)
+matrix_dt
+
+```
+
+# Random forest ML #
+
+Create a Random Forest fit and print results.
+
+```{r}
+
+rf_control <- trainControl(method="cv", number=6)
+fit_rf <- train(classe~., method="rf", data=trainSet, trControl=rf_control)
+fit_rf$finalModel
+
+```
+
+Make prediction and print confidence matrix for Random Forest.
+
+```{r}
+
+predict_rf <- predict(fit_rf, newdata=testSet)
+matrix_forest <- confusionMatrix(predict_rf, testSet$classe)
+matrix_forest
+
+```
+
+##  Conclusions ##
+
+This model able predict against the 20 test cases. 
+The model was able to predict all 20 observations correctly.
+
+The test set can be aplied for assignment like that:
+
+```{r}
+predictTEST <- predict(fit_rf, newdata=test)
+predictTEST
+```
+
+This was fun, but completely strange and unpractical.
