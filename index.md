@@ -121,7 +121,7 @@ The nice solution is available here: [Remove columns from dataframe where ALL va
 
 
 ```r
-notna    <- sapply(trainSet, function(x) mean(is.na(x))) > 0.95
+notna    <- sapply(trainSet, function(x) mean(is.na(x))) > 0
 trainSet <- trainSet[, !notna]
 testSet  <- testSet[, !notna]
 ```
@@ -147,6 +147,7 @@ dim(trainSet)
 ```
 
 Feature plot of dataset (slow) [more examples](http://topepo.github.io/caret/visualizations.html)
+The plot shows (very small sized) pictures of possible dependencies.
 
 
 ```r
@@ -165,7 +166,7 @@ dt_pred <- rpart(classe~., data=trainSet, method="class")
 fancyRpartPlot(dt_pred)
 ```
 
-![](index_files/figure-html/unnamed-chunk-8-1.png) 
+![](index_files/figure-html/dt-1.png) 
 
 Create a confusion matrix and print it.
 
@@ -291,13 +292,7 @@ The test set can be aplied for assignment like that:
 
 
 ```r
-predictTEST <- predict(fit_rf, newdata=test)
-predictTEST
-```
-
-```
-##  [1] A A A A A A A A A A A A A A A A A A A A
-## Levels: A B C D E
+predictTEST <- predict(fit_rf, newdata=testSet)
 ```
 
 This was fun, but completely strange and unpractical.

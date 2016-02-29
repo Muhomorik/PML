@@ -34,7 +34,7 @@ If you use the document you create for this class for any purpose please cite th
 ## Preparation ##
 
 
-```{r}
+```{r init}
 rm(list=ls())
 setwd("~/R Projects/Coursera/8 - Practical Machine Learning/PML")
 
@@ -56,7 +56,7 @@ set.seed(12345) # like always...
 Load the csv data. A quick look shows that both test and train data have NA values and
 the train data has additional "#DIV/0!" values that can be encoded as NA.
 
-```{r}
+```{r loadData}
 testUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
 trainUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
 
@@ -71,7 +71,7 @@ train <- read.csv("pml-training.csv", na.strings=c("NA","#DIV/0!",""))
 
 Create partitions
 
-```{r}
+```{r createDataPartition}
 
 inTrain  <- createDataPartition(train$classe, p=0.7, list=FALSE)
 
@@ -84,7 +84,7 @@ Both sets should now have 160 variables, but there is some data that needs to be
 Like variables with near zero variance.
 
 
-```{r}
+```{r nearZeroVar}
 
 NZVars <- nearZeroVar(trainSet)
 
@@ -96,9 +96,9 @@ testSet  <- testSet[, -NZVars]
 Some columns include mostly NA values, better to remove those or the predicion will fail with error.
 The nice solution is available here: [Remove columns from dataframe where ALL values are NA](http://stackoverflow.com/questions/2643939/remove-columns-from-dataframe-where-all-values-are-na)
 
-```{r}
+```{r filterNa}
 
-notna    <- sapply(trainSet, function(x) mean(is.na(x))) > 0.95
+notna    <- sapply(trainSet, function(x) mean(is.na(x))) > 0
 trainSet <- trainSet[, !notna]
 testSet  <- testSet[, !notna]
 
@@ -106,15 +106,16 @@ testSet  <- testSet[, !notna]
 
 At that moment, the test set should only include this reduced set of data:
 
-```{r}
+```{r dimtest}
 dim(testSet)
 ```
 and the training set 
-```{r}
+```{r dimtrain}
 dim(trainSet)
 ```
 
 Feature plot of dataset (slow) [more examples](http://topepo.github.io/caret/visualizations.html)
+The plot shows (very small sized) pictures of possible dependencies.
 
 ```{r featurePlot}
 featurePlot(x=trainSet, y = trainSet$classe, plot="pairs") #runs for 30 min
@@ -124,7 +125,7 @@ featurePlot(x=trainSet, y = trainSet$classe, plot="pairs") #runs for 30 min
 
 Make a Decision Tree ML and draw it using fancyplot.
 
-```{r}
+```{r dt}
 
 dt_pred <- rpart(classe~., data=trainSet, method="class")
 fancyRpartPlot(dt_pred)
@@ -133,7 +134,7 @@ fancyRpartPlot(dt_pred)
 
 Create a confusion matrix and print it.
 
-```{r}
+```{r dt_matrix}
 
 prediction_dt <- predict(dt_pred, newdata=testSet, type="class")
 matrix_dt <- confusionMatrix(prediction_dt, testSet$classe)
@@ -145,7 +146,7 @@ matrix_dt
 
 Create a Random Forest fit and print results.
 
-```{r}
+```{r rf}
 
 rf_control <- trainControl(method="cv", number=6)
 fit_rf <- train(classe~., method="rf", data=trainSet, trControl=rf_control)
@@ -155,7 +156,7 @@ fit_rf$finalModel
 
 Make prediction and print confidence matrix for Random Forest.
 
-```{r}
+```{r rf_matrix}
 
 predict_rf <- predict(fit_rf, newdata=testSet)
 matrix_forest <- confusionMatrix(predict_rf, testSet$classe)
@@ -170,9 +171,9 @@ The model was able to predict all 20 observations correctly.
 
 The test set can be aplied for assignment like that:
 
-```{r}
-predictTEST <- predict(fit_rf, newdata=test)
-predictTEST
+```{r final}
+predictTEST <- predict(fit_rf, newdata=testSet)
+
 ```
 
 This was fun, but completely strange and unpractical.
